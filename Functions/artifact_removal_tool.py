@@ -51,8 +51,27 @@ class ART:
 
         self._window_length = window_length
 
+    def single_channel_artifact_removal(self):
+        """ Removes artifacts from a single channel. """
+
+        # Compute embedded matrix
+        self.embedded_matrix()
+
+        #%% Replace NaN values
+        # - This can happen when the data clips, usually the variance will be 0
+        #   this can cause issues when performing the kmeans classification
+        # - If this happens, the window is unusable for further classification. Return 0 data 
+
+        # IDK where to put thi, maybe it goes in embedded matrix or not
+        # The code should stop here and set a warning saying that a saturation window was found and the original matrix was returned
+        if np.any(eeg_embedded.var(axis=0) < var_tol):
+    
+            artifact_found = False
+            saturation_found = True
+            return np.zeros_like(eeg_raw), artifact_found, saturation_found
+
     def embedded_matrix(self):
-        """ Returns embedded matrix from single EEG time series """
+        """ Sets EEG embedded matrix from single EEG time series. """
     
         # - n = length of time series
         n = self.eeg_data.shape[-1]
@@ -66,25 +85,48 @@ class ART:
         # - k = Number of columns
         k = n - m + 1
 
-        # - Create embedding matrix with the correspongding indices of the vector data
+        # - Create indexing matrix for embedding EEG data
         idx_col = np.arange(k).reshape(1,-1).repeat(m, axis=0)
         idx_row = np.arange(m).reshape(-1,1).repeat(k, axis=1)
         idx_mat = idx_col + idx_row
 
-        return idx_mat
+        self.eeg_embedded = self.eeg_data[idx_mat]
+
+
+    
+    def compute_features(self):
+        """ 
+            Sets a matrix with energy, Hjorth mobility, Kurtosis, and 
+            amplitude range for each column of the embedded matrix.
+        """
+
+        # Compute features
+        f1 = (self.eeg_embedded**2).sum(axis=0)                     # Energy [V^2]
+        f2 = np.sqrt((np.diff(self.eeg_embedded,axis=0)).var(axis=0)) \
+             / self.eeg_embedded.var(axis=0)                        # H_mobility
+        f3 = stats.kurtosis(self.eeg_embedded, axis=0)              # Kurtosis
+        f4 = self.eeg_embedded.max(0) - self.eeg_embedded.min(0)    # Range
+        
+        self.eeg_features = np.array((f1,f2,f3,f4))
+
+        return self.eeg_features
+    
+
 
     @property
-    def eeg(self):
+    def eeg_data(self):
         """ Getter method for 'eeg' property. """
-        return self._eeg
+        return self._eeg_data
 
-    @eeg.setter
-    def eeg(self, value):
+    @eeg_data.setter
+    def eeg_data(self, value):
         """ Setter method for 'eeg' property. """
-        if (value.shape[-2] < value.shape[-1]):
-            self._eeg = value
+        if ((value.ndim == 1) or  (value.shape[-2] < value.shape[-1])):
+            self._eeg_data = value
         else:
-            raise ValueError("EEG must be in shape `[channels, samples]`")
+            raise ValueError(
+                "EEG must be single dimension or in end in shape `[channels, samples]`"
+                )
         
     @property
     def window_length(self):
@@ -153,11 +195,11 @@ class ART:
 #     # - This can happen when the data clips, usually the variance will be 0
 #     #   this can cause issues when performing the kmeans classification
 #     # - If this happens, the window is unusable for further classification. Return 0 data 
-#     if np.any(eeg_embedded.var(axis=0) < var_tol):
-#     # if np.any(np.isnan(eeg_features)):
-#        artifact_found = False
-#        saturation_found = True
-#        return np.zeros_like(eeg_raw), artifact_found, saturation_found
+    if np.any(eeg_embedded.var(axis=0) < var_tol):
+    # if np.any(np.isnan(eeg_features)):
+    #    artifact_found = False
+    #    saturation_found = True
+    #    return np.zeros_like(eeg_raw), artifact_found, saturation_found
 
 #     #%% Perform Kmeans classification
 #     kmeans = KMeans(n_clusters=n_clusters).fit(eeg_features.T)
