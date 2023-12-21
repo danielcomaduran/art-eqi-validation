@@ -7,8 +7,9 @@
 
 ## Import libraries
 import os
+import warnings
 import numpy as np
-import scipy.stats as stats
+from scipy.stats import kurtosis
 import scipy.linalg as linalg
 from sklearn.cluster import KMeans
 from numpy import matlib as matlib, ndarray
@@ -25,7 +26,8 @@ class ART:
             window_length:int | float = 125,
             n_clusters:int = 4,
             fd_threshold:float = 1.4,
-            ssa_threshold:float = 0.01, 
+            ssa_threshold:float = 0.01,
+            var_tol:float = 1e-15,
             ):
         """
             Initialize new instance of Artifact Removal Tool (ART).
@@ -40,35 +42,39 @@ class ART:
                     Number of k-clusters used in KNN classification [A.U.]
                 - `fd_threshold`: float, optional                    
                     Fractal dimension threshold [A.U.]
-                - `ssa_threshold`: floar, optional                    
+                - `ssa_threshold`: float, optional                    
                     Singular Spectrum Analysis threshold. 
                     Eigenvalues > ssa_threshold are included in SSA [A.U.]
+                - `var_tol`: float, optional
+                    Threshold for variance tolerance. Values below this number will
+                    be considered to be 0.
         """
 
         self.n_clusters = n_clusters
         self.fd_threshold = fd_threshold
         self.ssa_threshold = ssa_threshold
-
+        self.var_tol = var_tol
+        
+        # General flags
+        self.artifact_found = False
+        self.null_var_found = False
+        
         self._window_length = window_length
+        
 
     def single_channel_artifact_removal(self):
         """ Removes artifacts from a single channel. """
 
-        # Compute embedded matrix
+        # Compute embedded matrix 
         self.embedded_matrix()
 
-        #%% Replace NaN values
-        # - This can happen when the data clips, usually the variance will be 0
-        #   this can cause issues when performing the kmeans classification
-        # - If this happens, the window is unusable for further classification. Return 0 data 
+        # If null variance is found, return raw data
+        if self.null_variance():
+            return self.eeg_data
 
-        # IDK where to put thi, maybe it goes in embedded matrix or not
-        # The code should stop here and set a warning saying that a saturation window was found and the original matrix was returned
-        if np.any(eeg_embedded.var(axis=0) < var_tol):
-    
-            artifact_found = False
-            saturation_found = True
-            return np.zeros_like(eeg_raw), artifact_found, saturation_found
+        
+
+        
 
     def embedded_matrix(self):
         """ Sets EEG embedded matrix from single EEG time series. """
@@ -92,7 +98,20 @@ class ART:
 
         self.eeg_embedded = self.eeg_data[idx_mat]
 
+    def null_variance(self):
+        """ 
+            Evaluates if there are windows with null variance (i.e., flat lines). 
+            This can happen when the signal clips or is constant around 0.
 
+            If this happens, the kurosis will not be able to be calculated.
+
+            Returns `true` if variance < var_tol is found for any column of the 
+            index matrix.                
+        """
+
+        if np.any(self.eeg_embedded.var(axis=0) < self.var_tol):
+            warnings.warn("Null variance found, returning raw EEG")
+            self.null_var_found = True            
     
     def compute_features(self):
         """ 
@@ -104,7 +123,7 @@ class ART:
         f1 = (self.eeg_embedded**2).sum(axis=0)                     # Energy [V^2]
         f2 = np.sqrt((np.diff(self.eeg_embedded,axis=0)).var(axis=0)) \
              / self.eeg_embedded.var(axis=0)                        # H_mobility
-        f3 = stats.kurtosis(self.eeg_embedded, axis=0)              # Kurtosis
+        f3 = kurtosis(self.eeg_embedded, axis=0)                    # Kurtosis
         f4 = self.eeg_embedded.max(0) - self.eeg_embedded.min(0)    # Range
         
         self.eeg_features = np.array((f1,f2,f3,f4))
@@ -195,7 +214,7 @@ class ART:
 #     # - This can happen when the data clips, usually the variance will be 0
 #     #   this can cause issues when performing the kmeans classification
 #     # - If this happens, the window is unusable for further classification. Return 0 data 
-    if np.any(eeg_embedded.var(axis=0) < var_tol):
+    # if np.any(eeg_embedded.var(axis=0) < var_tol):
     # if np.any(np.isnan(eeg_features)):
     #    artifact_found = False
     #    saturation_found = True
