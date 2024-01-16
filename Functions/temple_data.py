@@ -14,7 +14,8 @@ class TempleData:
         self.montage_type = montage_type
     
         # Create EDF object with data
-        # self.edf = io.edf(self.file_name)
+        
+        self.edf = io.read_raw_edf(self.file_name)
 
     def set_montage(self):
         """ Creates an array mask to obtain the proper montage """
@@ -26,7 +27,7 @@ class TempleData:
         """ Returns a list of windows with all the windows that are not
             asociated to an artifact (i.e., clean windows). """
 
-    def get_artifacts(self, artifact_type):
+    def get_artifacts(self, artifact_file:str, artifact_type:str):
         """ Returns a list with all the artifacts of type `artifact_type` """
 
     def list_to_np(self, data:list):
