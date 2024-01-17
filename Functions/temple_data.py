@@ -1,6 +1,8 @@
-
+# Import libraries
+import csv
 import mne.io as io
 import numpy as np
+
 
 class TempleData:
     """ Object to handle the Temple Artifact Dataset. """
@@ -11,6 +13,7 @@ class TempleData:
         ):
     
         self.file_name = file_name
+        self.trial_id = file_name.split("\\")[-1].split(".")[0]
         self.montage_type = montage_type
     
         # Create EDF object with data
@@ -127,4 +130,28 @@ class TempleData:
     def list_to_np(self, data:list):
         """ Trims `data` list to the shortest element and returns a numpy
             array where the first dimension = len(data). """
+        
+    def _artifact_lines(self, artifact_file:str):
+        """ Returns the lines in `artifact_file` that are associated with 
+            the proper `file_name`. """
+        
+        # Preallocate list for output
+        artifact_lines = []
+    
+        # Look for matching lines in `artifact_file`
+        with open(artifact_file, "r") as f:
+            
+            # Loop through each line in the file
+            for line in f:
+                line = line.strip()
+                
+                # Check that line is not empty and matches trial_id name
+                if line and (line.split(",")[0] == self.trial_id):
+                    artifact_lines.append(line)
+        
+        return artifact_lines
+
+  
+    
+
 
