@@ -2,6 +2,7 @@
 import csv
 import mne.io as io
 import numpy as np
+from collections import defaultdict
 
 
 class TempleData:
@@ -24,6 +25,7 @@ class TempleData:
 
     def set_montage(self):
         """ Creates an array mask to obtain the proper montage """
+
         montage_info = {
             "ar": {
                 "FP1-F7": "EEG FP1-REF - EEG F7-REF",
@@ -122,10 +124,20 @@ class TempleData:
 
     def get_clean_data(self):
         """ Returns a list of windows with all the windows that are not
-            asociated to an artifact (i.e., clean windows). """
+            asociated to an artifact (i.e., clean windows). 
+        """
 
-    def get_artifacts(self, artifact_file:str, artifact_type:str):
-        """ Returns a list with all the artifacts of type `artifact_type` """
+    def get_artifacts_from_csv(self, artifact_file:str):
+        """ Sets an `self.artifacts` as a dictionary where the main key is 
+            the `arfitact type`, and then individual artifacts are numbered.
+            Each individual artifact has keys for `start_end` times, and the 
+            list of `chans` associated to the artifact.
+        """
+
+        # Create artifact dictionary only once
+        if not self.artifacts:
+            artifact_lines = self._artifact_lines(artifact_file)
+            self._artifact_dictionary(artifact_lines)
 
     def list_to_np(self, data:list):
         """ Trims `data` list to the shortest element and returns a numpy
@@ -133,7 +145,7 @@ class TempleData:
         
     def _artifact_lines(self, artifact_file:str):
         """ Returns the lines in `artifact_file` that are associated with 
-            the proper `file_name`. """
+            the proper `trial_id`. """
         
         # Preallocate list for output
         artifact_lines = []
@@ -151,6 +163,36 @@ class TempleData:
         
         return artifact_lines
 
+    def _artifact_dictionary(self, artifact_lines):
+        """ Creates a dictionary with the artifact type as main key, 
+            and the numbered  artifacts with `start_end` times and the
+            list of `chans` associated with the artifact. 
+        """
+        
+        # Preallocate artifact dictionary
+        self.artifacts = defaultdict(lambda: defaultdict(lambda: {'start_end': [], 'chans': []}))
+
+        # Read each artifact line
+        for artifact in artifact_lines:
+            row = artifact.split(',')
+            main_key = row[4]
+            start_end = (float(row[2]), float(row[3]))
+            chan = row[1]
+            
+            # Get the key indices for artifact number
+            keys = [key for key in self.artifacts[main_key] if start_end in self.artifacts[main_key][key]['start_end']]
+            if not keys:
+                key = len(self.artifacts[main_key]) + 1
+            else:
+                key = keys[0]
+            
+            # Store append start_end times if empty
+            if start_end not in self.artifacts[main_key][key]['start_end']:
+                self.artifacts[main_key][key]['start_end'].append(start_end)
+
+            # Append chan label if not already in dict
+            if chan not in self.artifacts[main_key][key]['chans']:
+                self.artifacts[main_key][key]['chans'].append(chan)
   
     
 
