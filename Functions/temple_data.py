@@ -188,7 +188,7 @@ class TempleData:
             
             # Store append start_end times if empty
             if start_end not in self.artifacts[main_key][key]['start_end']:
-                self.artifacts[main_key][key]['start_end'].append(start_end)
+                self.artifacts[main_key][key]['start_end'] = start_end
 
             # Append chan label if not already in dict
             if chan not in self.artifacts[main_key][key]['chans']:
