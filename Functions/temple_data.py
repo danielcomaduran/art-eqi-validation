@@ -7,6 +7,7 @@ from collections import defaultdict
 
 class TempleData:
     """ Object to handle the Temple Artifact Dataset. """
+
     def __init__(
         self,
         file_name:str,
@@ -126,6 +127,36 @@ class TempleData:
         """ Returns a list of windows with all the windows that are not
             asociated to an artifact (i.e., clean windows). 
         """
+    
+    def get_artifact_type_data(self, artifact_type:str):
+        """ Returns a list with artifact epochs of `artifact_type`. """
+
+        # Check that artifacts have been defined
+        if not hasattr(self, "artifacts"):
+            print("Artifacts have not been defined yet ")
+            return None
+        
+        # If the artifact type exists
+        if (artifact_type in self.artifacts):
+            
+            # Prealocate list for output
+            artifacts_list = []
+
+            # Create time vector for trial
+            [_, nsamples] = np.shape(self.data)
+            t = np.linspace(0, nsamples/self.srate, nsamples)
+
+            for (_,artifact_epoch) in self.artifacts[artifact_type].items():
+                chans = artifact_epoch["chans"]
+                chan_mask = [i for (i,val) in enumerate(self.ch_names) if val in chans]
+
+                # TODO: Missing trimming times
+                trim_times = artifact_epoch["start_end"][0]              
+                time_mask = (t >= trim_times[0]) & (t <= trim_times[1])
+                artifacts_list.append(self.data[chan_mask,:][:,time_mask])
+            
+            # Return artifact list
+            return artifacts_list    
 
     def get_artifacts_from_csv(self, artifact_file:str):
         """ Sets an `self.artifacts` as a dictionary where the main key is 
@@ -188,7 +219,7 @@ class TempleData:
             
             # Store append start_end times if empty
             if start_end not in self.artifacts[main_key][key]['start_end']:
-                self.artifacts[main_key][key]['start_end'] = start_end
+                self.artifacts[main_key][key]['start_end'].append(start_end)
 
             # Append chan label if not already in dict
             if chan not in self.artifacts[main_key][key]['chans']:
