@@ -135,7 +135,7 @@ class TempleData:
         """
 
         # Create artifact dictionary only once
-        if not self.artifacts:
+        if not hasattr(self, "artifacts"):
             artifact_lines = self._artifact_lines(artifact_file)
             self._artifact_dictionary(artifact_lines)
 
