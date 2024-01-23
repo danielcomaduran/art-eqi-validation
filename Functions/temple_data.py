@@ -11,24 +11,26 @@ class TempleData:
     def __init__(
         self,
         file_name:str,
-        montage_type:str,
         ):
     
         self.file_name = file_name
         self.trial_id = file_name.split("\\")[-1].split(".")[0]
-        self.montage_type = montage_type
-    
+            
         # Create EDF object with data
         edf = io.read_raw_edf(self.file_name)
         self.srate = edf.info["sfreq"]
         self.data = edf.get_data()
         self.ch_names = edf.info["ch_names"]
 
+        # Identify montage from path and implement it
+        self.montage_type = file_name.split("\\")[-5]
+        self.set_montage()
+
     def set_montage(self):
         """ Creates an array mask to obtain the proper montage """
 
         montage_info = {
-            "ar": {
+            "01_tcp_ar": {
                 "FP1-F7": "EEG FP1-REF - EEG F7-REF",
                 "F7-T3": "EEG F7-REF - EEG T3-REF",
                 "T3-T5": "EEG T3-REF - EEG T5-REF",
@@ -53,7 +55,7 @@ class TempleData:
                 "P4-O2": "EEG P4-REF - EEG O2-REF"
             },
 
-            "le": {
+            "02_tcp_le": {
                 "FP1-F7": "EEG FP1-LE - EEG F7-LE",
                 "F7-T3":  "EEG F7-LE - EEG T3-LE",
                 "T3-T5":  "EEG T3-LE - EEG T5-LE",
@@ -78,7 +80,7 @@ class TempleData:
                 "P4-O2":  "EEG P4-LE - EEG O2-LE"
             },
 
-            "ar_a": {
+            "03_tcp_ar_a": {
                 "FP1-F7": "EEG FP1-REF - EEG F7-REF",
                 "F7-T3": "EEG F7-REF - EEG T3-REF",
                 "T3-T5": "EEG T3-REF - EEG T5-REF",
