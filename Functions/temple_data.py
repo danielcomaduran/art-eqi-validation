@@ -123,10 +123,43 @@ class TempleData:
         self.data = transformed_data
         self.ch_names = list(montage.keys())
 
-    def get_clean_data(self):
+    def get_clean_data(self, clean_window_length:float):
         """ Returns a list of windows with all the windows that are not
             asociated to an artifact (i.e., clean windows). 
+
+            Parameters
+            ----------
+                - `min_clean_window`: float
+                    Time duration of the minimum clean window size to return [sec]
         """
+        # Check that artifacts have been defined
+        if not hasattr(self, "artifacts"):
+            print("Artifacts have not been defined yet ")
+            return None
+        
+        
+        # Initialize clean mask with ones
+        [_, nsamples] = np.shape(self.data)
+        clean_mask = np.ones(nsamples, dtype=bool)
+        
+        # Get start-end times of all artifacts
+        # Mark artifact times as zeros in mask
+        for artifact_type in self.artifacts:
+            for artifact_number in self.artifacts[artifact_type]:
+                [start_time, end_time] = self.artifacts[artifact_type][artifact_number]['start_end'][0]
+
+                # Create mask vector where 1 == clean samples
+                istart = int(start_time * self.srate)
+                iend = int(end_time * self.srate)
+                clean_mask[istart:iend] = 0
+
+        # Partition data in contiguous windows of set length
+        self.clean_mask = clean_mask
+        clean_contiguous = self._partition_vector(clean_mask, int(clean_window_length*self.srate))
+        clean_data = self.data[:,clean_contiguous]
+
+        return clean_data
+
     
     def get_artifact_type_data(self, artifact_type:str):
         """ Returns a list with artifact epochs of `artifact_type`. """
@@ -225,6 +258,42 @@ class TempleData:
             if chan not in self.artifacts[main_key][key]['chans']:
                 self.artifacts[main_key][key]['chans'].append(chan)
   
-    
+    import numpy as np
+
+    def _partition_vector(self, clean_mask, m):
+        """ Partitions a boolean vector of `clean_mask` windows of `m` length,
+            considering contiguous true values. """
+        
+        # Find the indices of True values
+        true_indices = np.where(clean_mask)[0]
+
+        # Identify blocks of contiguous true values 
+        diff = np.diff(true_indices, prepend=-np.inf)
+        block_starts = np.where(diff != 1)[0]
+        block_ends = np.roll(block_starts - 1, -1)
+        block_ends = [len(true_indices)-1 if block == -1 else block for block in block_ends]
+
+        # Create a list to store the windows
+        windows = []
+
+        # Iterate over the blocks
+        for start, end in zip(block_starts, block_ends):
+            length = end - start + 1
+
+            # If the length of the block is greater than or equal to m
+            if length > m:
+                # Partition the block into windows of size m
+                for i in range(length // m):
+                    
+                    # Append the window to the list
+                    t0 = start + (i*m)
+                    t1 = start + ((i+1)*m)
+                    windows.append(true_indices[t0:t1])
+
+        # Convert the list of windows to a 2D array
+        windows = np.array(windows)
+
+        return windows
+
 
 
