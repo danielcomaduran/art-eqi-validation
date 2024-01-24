@@ -9,6 +9,7 @@ import pandas as pd
 import pyxdf
 import mne
 import os
+import random
 
 def import_xdf(file:str) -> tuple[np.ndarray, list, np.ndarray, np.ndarray]:
     """ Imports XDF data and returns `lsl_time`, `lsl_markers`, 
@@ -139,3 +140,24 @@ def append_json(
         json.dump(data, f)
     
     
+def split_list(lst, test_percentage, seed:int|None=None):
+    """" 
+        Returns `[optimization, test]` indices based on the `test_percentage` variable.
+        For example, if you have a list with 5 elements, and `test_percentage=20`, 
+        will return 4 indices for `optimization` (i.e., 80\%), and  1 index for 
+        test (i.e., 20\%)
+        
+        Note: use `seed` for repeatible results . 
+    """
+    
+    test_size = int(len(lst) * test_percentage / 100)
+
+    
+    if (seed is not None):
+        random.seed = seed
+    
+    random.shuffle(lst)
+    optimization = lst[:-test_size]
+    test = lst[-test_size:]
+    
+    return optimization, test
