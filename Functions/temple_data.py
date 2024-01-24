@@ -199,16 +199,20 @@ class TempleData:
                 end = artifact_epoch["start_end"][0][1]
 
                 chans = artifact_epoch["chans"]
-                artifacts_chans.append(chans)
+                
                 ichannels = [i for (i,val) in enumerate(self.ch_names) if val in chans]
 
                 # Keep entire artifact
                 if window_length is None:
+                    artifacts_chans.append(chans)
+                    
                     time_mask = (t >= start) & (t <= end)
                     artifacts_data.append(self.data[ichannels,:][:,time_mask])
 
                 # Only keep artifact if > window_length
                 elif ((end-start) >= window_length):
+                    artifacts_chans.append(chans)
+                    
                     time_mask = (t >= start) & (t <= start+window_length)
                     artifacts_data.append(self.data[ichannels,:][:,time_mask]) 
 
