@@ -230,7 +230,7 @@ def single_amplitude_spectrum(eeg, srate, n):
     """
 
     # Calculate single sided FFT and frequency vector
-    single_fft = np.abs(fft.rfft(eeg, n=n, axis=1, workers=-1))
+    single_fft = np.abs(fft.rfft(eeg, n=int(n), axis=1, workers=-1))
 
     # Create frequency vector
     size_fft = np.shape(single_fft)
