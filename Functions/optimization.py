@@ -27,8 +27,8 @@ def maximize_eqi(x, *args):
 
     # Apply artifact removal
     test_data = art.remove_artifacts(
-        artifact_data,
-        srate
+        eeg_data = artifact_data,
+        srate = srate
     )
 
     eqi_total = eqi.scoring(
@@ -42,7 +42,7 @@ def maximize_eqi(x, *args):
 
     # Use the complement to minimize the problem
     eqi_total_complement = 100 - np.mean(eqi_total)
-    print(f" result {eqi_total_complement}")
+    print(f" EQI value {eqi_total_complement}")
 
     return eqi_total_complement
 
