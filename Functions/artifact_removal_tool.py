@@ -160,7 +160,7 @@ class ART:
             Evaluates if there are windows with null variance (i.e., flat lines). 
             This can happen when the signal clips or is constant around 0.
 
-            If this happens, the kurosis will not be able to be calculated.
+            If this happens, the kurtosis will not be able to be calculated.
 
             Returns `true` if variance < var_tol is found for any column of the 
             index matrix.                

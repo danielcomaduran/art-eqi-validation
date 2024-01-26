@@ -19,26 +19,26 @@ def maximize_eqi(x, *args):
 
     # Creat artifact removal object
     art = ART(
-        window_length = window_length,
+        window_length = window_samples // 2,
         n_clusters = n_clusters,
         fd_threshold = fd_threshold,
         ssa_threshold = ssa_threshold 
-    )
+        )
 
     # Apply artifact removal
     test_data = art.remove_artifacts(
         eeg_data = artifact_data,
         srate = srate
-    )
+        )
 
     eqi_total = eqi.scoring(
         clean_eeg = clean_data,
         test_eeg = test_data,
         srate_clean = srate,
         srate_test = srate,
-        window = int(window_samples // 10),
-        slide = int(window_samples // 20)
-    )[0]
+        window = int(srate),
+        slide = int(srate // 10)
+        )[0]
 
     # Use the complement to minimize the problem
     eqi_total_complement = 100 - np.mean(eqi_total)
