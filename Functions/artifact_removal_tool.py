@@ -14,6 +14,9 @@ from sklearn.cluster import KMeans
 from numpy import matlib as matlib
 import concurrent.futures as cf
 
+from rich import print as rprint
+from rich.pretty import pprint as rpprint
+
 class ART:
     """
         Artifact removal tool to remove eyeblink artifacts from EEG data using an SSA 
@@ -29,7 +32,7 @@ class ART:
             var_tol:float = 1e-15,
             antidiag_method:str = "mask",
             svd_method:str = "sci"
-            ):
+        ):
         """
             Initialize new instance of Artifact Removal Tool (ART).
 
@@ -104,7 +107,7 @@ class ART:
 
         # Calculate features from embedded matrix
         eeg_features = self.compute_features(eeg_embedded)
-
+        
         # Kmeans decomposition
         eeg_components = self.compute_kmeans(
             eeg_embedded,
@@ -198,6 +201,11 @@ class ART:
             -------
                 - `eeg_components`: k-clusters components with same length as eeg_data.
         """
+
+        # Handle NaN values
+        if np.any(np.isnan(eeg_features)):
+            # warnings.warn("NaN found in features, replacing with 0")
+            eeg_features = np.nan_to_num(eeg_features)
         
         # Perform Kmeans classification
         kmeans = KMeans(
@@ -229,7 +237,7 @@ class ART:
     
     def compute_fd_mask(self, eeg_components):
         """ Computes fractal dimension mask. """
-             
+
         # - Normalize EEG to unit square
         x_norm = np.repeat(
             np.reshape(np.linspace(0, 1, self.n), [-1,1]),
@@ -257,7 +265,7 @@ class ART:
 
         # - Set flag for artifacts found
         if fd_mask.any():
-            self.artifact_found = True        
+            self.artifact_found = True
 
         return fd_mask
     

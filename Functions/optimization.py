@@ -13,7 +13,7 @@ import Functions.eeg_quality_index as eqi
 def maximize_eqi(x, *args):
     # Separate input variables
     [n_clusters, fd_threshold, ssa_threshold] = copy.deepcopy(x)
-    [clean_data, artifact_data, srate, window_length] = args
+    [clean_data, artifact_data, srate, window_length, var_tol] = args
 
     n_clusters = int(n_clusters)
 
@@ -25,7 +25,8 @@ def maximize_eqi(x, *args):
         window_length = window_length,
         n_clusters = n_clusters,
         fd_threshold = fd_threshold,
-        ssa_threshold = ssa_threshold 
+        ssa_threshold = ssa_threshold,
+        var_tol = var_tol
     )
 
     # Apply artifact removal
