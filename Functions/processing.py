@@ -19,5 +19,3 @@ def bandpass_filter(x:np.ndarray, n:int, fc:list, srate:float) -> np.ndarray
     filtered_x = sosfiltfilt(sos, x)
 
     return filtered_x
-
-

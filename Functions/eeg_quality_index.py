@@ -83,9 +83,9 @@ def scoring(clean_eeg, test_eeg, srate_clean, srate_test, sliding=True, window=N
     z_scores = np.floor(np.abs((eqi_test-mean_eqi_clean)/std_eqi_clean)) # Calculate z-scores
     z_scores = np.where(z_scores>3, 3, z_scores)    # Replace z-scores values >3 to = 3
 
-    # Print warning
-    if np.any(np.isnan(z_scores)):
-        print("Warning!\nOne or more Z-scores have NaN values\nReview eqi_mean carefully")
+    # # Print warning
+    # if np.any(np.isnan(z_scores)):
+    #     print("Warning!\nOne or more Z-scores have NaN values\nReview eqi_mean carefully")
 
     # EQI average
     eqi_mean = np.mean(z_scores, 2)                                             # EQI Averages

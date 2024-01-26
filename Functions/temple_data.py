@@ -1,4 +1,5 @@
 # Import libraries
+import os
 import csv
 import mne.io as io
 import numpy as np
@@ -14,7 +15,10 @@ class TempleData:
         ):
     
         self.file_name = file_name
-        self.trial_id = file_name.split("\\")[-1].split(".")[0]
+        if "\\" in file_name:
+            self.trial_id = file_name.split("\\")[-1].split(".")[0]
+        else:
+            self.trial_id = os.path.basename(file_name).split(".")[0]
             
         # Create EDF object with data
         edf = io.read_raw_edf(self.file_name)
@@ -23,7 +27,10 @@ class TempleData:
         self.ch_names = edf.info["ch_names"]
 
         # Identify montage from path and implement it
-        self.montage_type = file_name.split("\\")[-5]
+        if "\\" in file_name:
+            self.montage_type = file_name.split("\\")[-5]
+        else:
+            self.montage_type = os.path.normpath(file_name).split(os.sep)[-5]
         self.set_montage()
 
     def set_montage(self):
@@ -326,6 +333,5 @@ class TempleData:
         windows = np.array(windows)
 
         return windows
-
 
 
