@@ -1,4 +1,5 @@
 # Import libraries
+import os
 import csv
 import mne.io as io
 import numpy as np
@@ -11,24 +12,32 @@ class TempleData:
     def __init__(
         self,
         file_name:str,
-        montage_type:str,
         ):
     
         self.file_name = file_name
-        self.trial_id = file_name.split("\\")[-1].split(".")[0]
-        self.montage_type = montage_type
-    
+        if "\\" in file_name:
+            self.trial_id = file_name.split("\\")[-1].split(".")[0]
+        else:
+            self.trial_id = os.path.basename(file_name).split(".")[0]
+            
         # Create EDF object with data
         edf = io.read_raw_edf(self.file_name)
         self.srate = edf.info["sfreq"]
         self.data = edf.get_data()
         self.ch_names = edf.info["ch_names"]
 
+        # Identify montage from path and implement it
+        if "\\" in file_name:
+            self.montage_type = file_name.split("\\")[-5]
+        else:
+            self.montage_type = os.path.normpath(file_name).split(os.sep)[-5]
+        self.set_montage()
+
     def set_montage(self):
         """ Creates an array mask to obtain the proper montage """
 
         montage_info = {
-            "ar": {
+            "01_tcp_ar": {
                 "FP1-F7": "EEG FP1-REF - EEG F7-REF",
                 "F7-T3": "EEG F7-REF - EEG T3-REF",
                 "T3-T5": "EEG T3-REF - EEG T5-REF",
@@ -53,7 +62,7 @@ class TempleData:
                 "P4-O2": "EEG P4-REF - EEG O2-REF"
             },
 
-            "le": {
+            "02_tcp_le": {
                 "FP1-F7": "EEG FP1-LE - EEG F7-LE",
                 "F7-T3":  "EEG F7-LE - EEG T3-LE",
                 "T3-T5":  "EEG T3-LE - EEG T5-LE",
@@ -78,7 +87,7 @@ class TempleData:
                 "P4-O2":  "EEG P4-LE - EEG O2-LE"
             },
 
-            "ar_a": {
+            "03_tcp_ar_a": {
                 "FP1-F7": "EEG FP1-REF - EEG F7-REF",
                 "F7-T3": "EEG F7-REF - EEG T3-REF",
                 "T3-T5": "EEG T3-REF - EEG T5-REF",
@@ -156,12 +165,23 @@ class TempleData:
         # Partition data in contiguous windows of set length
         self.clean_mask = clean_mask
         clean_contiguous = self._partition_vector(clean_mask, int(clean_window_length*self.srate))
-        clean_data = self.data[:,clean_contiguous]
+
+        # Preallocate output
+        clean_data = np.zeros((
+            clean_contiguous.shape[0],
+            self.data.shape[0],
+            clean_contiguous.shape[1]
+        ))
+
+        # Index channel by [window, mask]
+        for c in range(self.data.shape[0]):
+            clean_data[:,c,:] = self.data[c, clean_contiguous]
+        # clean_data = self.data[:,clean_contiguous]
 
         return clean_data
 
     
-    def get_artifact_type_data(self, artifact_type:str):
+    def get_artifact_type_data(self, artifact_type:str, window_length:float|None=None):
         """ Returns a list with artifact epochs of `artifact_type`. """
 
         # Check that artifacts have been defined
@@ -173,23 +193,42 @@ class TempleData:
         if (artifact_type in self.artifacts):
             
             # Prealocate list for output
-            artifacts_list = []
+            artifacts_chans = []
+            artifacts_data = []
+            
 
             # Create time vector for trial
             [_, nsamples] = np.shape(self.data)
             t = np.linspace(0, nsamples/self.srate, nsamples)
 
             for (_,artifact_epoch) in self.artifacts[artifact_type].items():
-                chans = artifact_epoch["chans"]
-                chan_mask = [i for (i,val) in enumerate(self.ch_names) if val in chans]
+                start = artifact_epoch["start_end"][0][0]
+                end = artifact_epoch["start_end"][0][1]
 
-                # TODO: Missing trimming times
-                trim_times = artifact_epoch["start_end"][0]              
-                time_mask = (t >= trim_times[0]) & (t <= trim_times[1])
-                artifacts_list.append(self.data[chan_mask,:][:,time_mask])
+                chans = artifact_epoch["chans"]
+                
+                ichannels = [i for (i,val) in enumerate(self.ch_names) if val in chans]
+
+                # Keep entire artifact
+                if window_length is None:
+                    artifacts_chans.append(chans)
+                    
+                    time_mask = (t >= start) & (t <= end)
+                    artifacts_data.append(self.data[ichannels,:][:,time_mask])
+
+                # Only keep artifact if > window_length
+                elif ((end-start) >= window_length):
+                    artifacts_chans.append(chans)
+                    
+                    time_mask = (t >= start) & (t <= start+window_length)
+                    artifacts_data.append(self.data[ichannels,:][:,time_mask]) 
+
+            # Convert list to array since all artifacts have the same length
+            if window_length is not None:
+                artifacts_data = np.array(artifacts_data)                
             
             # Return artifact list
-            return artifacts_list    
+            return artifacts_chans, artifacts_data    
 
     def get_artifacts_from_csv(self, artifact_file:str):
         """ Sets an `self.artifacts` as a dictionary where the main key is 
@@ -225,7 +264,7 @@ class TempleData:
                 if line and (line.split(",")[0] == self.trial_id):
                     artifact_lines.append(line)
         
-        return artifact_lines
+        return artifact_lines        
 
     def _artifact_dictionary(self, artifact_lines):
         """ Creates a dictionary with the artifact type as main key, 
@@ -294,6 +333,5 @@ class TempleData:
         windows = np.array(windows)
 
         return windows
-
 
 
