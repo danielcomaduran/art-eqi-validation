@@ -156,7 +156,7 @@ def eqi(eeg, srate, sliding=True, window=None, slide=None):
     rms = np.sqrt(np.mean(eeg_windowed**2, axis=1)) 
 
     ## Maximum gradient
-    max_grad = (np.diff(eeg_windowed, axis=1)).max(axis=1) 
+    max_grad = np.abs((np.diff(eeg_windowed, axis=1))).max(axis=1) 
 
     ## Zero-crossing rate
     eeg_zcr = zcr(eeg_windowed)
