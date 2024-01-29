@@ -217,8 +217,8 @@ class TempleData:
                     artifacts_data.append(self.data[ichannels,:][:,time_mask]) 
 
             # Convert list to array since all artifacts have the same length
-            if window_length is not None:
-                artifacts_data = np.array(artifacts_data)                
+            # if window_length is not None:
+                # artifacts_data = np.array(artifacts_data)                
             
             # Return artifact list
             return artifacts_chans, artifacts_data    
