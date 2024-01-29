@@ -22,7 +22,7 @@ def maximize_eqi(x, *args):
 
     # Creat artifact removal object
     art = ART(
-        window_length = window_samples,
+        window_length = (window_samples // 2),  # To have 500 msec windows like the paper
         n_clusters = n_clusters,
         fd_threshold = fd_threshold,
         ssa_threshold = ssa_threshold,
