@@ -22,7 +22,7 @@ def maximize_eqi(x, *args):
 
     # Creat artifact removal object
     art = ART(
-        window_length = (window_samples // 2),  # To have 500 msec windows like the paper
+        window_length = int(srate // 2),  # To have 500 msec windows like the paper
         n_clusters = n_clusters,
         fd_threshold = fd_threshold,
         ssa_threshold = ssa_threshold,
@@ -40,8 +40,8 @@ def maximize_eqi(x, *args):
         test_eeg = test_data,
         srate_clean = srate,
         srate_test = srate,
-        window = int(window_samples // 10),
-        slide = int(window_samples // 20)
+        window = int(srate // 10),
+        slide = int(srate // 20)
     )
 
     # rpprint({
