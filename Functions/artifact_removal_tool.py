@@ -100,6 +100,7 @@ class ART:
         # If null variance is found, return raw data
         self.null_variance(eeg_embedded)
         if self.null_var_found:
+            self.null_var_found = False
             return eeg_data
 
         # Calculate features from embedded matrix
@@ -116,7 +117,9 @@ class ART:
 
         # If no artifacts were found return original data
         if not self.artifact_found:
+            self.artifact_found = False
             return eeg_data
+        
         
         # Create time series with artifact mask
         eeg_mask = np.sum(eeg_components[fd_mask,:],0)  # Vector with artifact points != 0
@@ -160,7 +163,7 @@ class ART:
             Evaluates if there are windows with null variance (i.e., flat lines). 
             This can happen when the signal clips or is constant around 0.
 
-            If this happens, the kurosis will not be able to be calculated.
+            If this happens, the kurtosis will not be able to be calculated.
 
             Returns `true` if variance < var_tol is found for any column of the 
             index matrix.                
@@ -286,6 +289,10 @@ class ART:
         [u, s, vh] = svd_methods[self.svd_method]
 
         # Keep only eigenvectors > ssa_threshold and reconstruct signal
+        # print(f"Sum {s.sum()} - threshold {self.ssa_threshold}")
+        if (s.sum() == 0):
+            return eeg_sub_artifact
+        
         eigen_ratio = (s / s.sum()) > self.ssa_threshold 
         artifact_sub = u[:,eigen_ratio] @ np.diag(s[eigen_ratio]) @ vh[eigen_ratio,:]
         artifact = self.mean_antidiag(artifact_sub, self.antidiag_method)

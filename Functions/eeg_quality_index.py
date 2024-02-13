@@ -156,7 +156,7 @@ def eqi(eeg, srate, sliding=True, window=None, slide=None):
     rms = np.sqrt(np.mean(eeg_windowed**2, axis=1)) 
 
     ## Maximum gradient
-    max_grad = (np.diff(eeg_windowed, axis=1)).max(axis=1) 
+    max_grad = np.abs((np.diff(eeg_windowed, axis=1))).max(axis=1) 
 
     ## Zero-crossing rate
     eeg_zcr = zcr(eeg_windowed)
@@ -230,7 +230,7 @@ def single_amplitude_spectrum(eeg, srate, n):
     """
 
     # Calculate single sided FFT and frequency vector
-    single_fft = np.abs(fft.rfft(eeg, n=n, axis=1, workers=-1))
+    single_fft = np.abs(fft.rfft(eeg, n=int(n), axis=1, workers=-1))
 
     # Create frequency vector
     size_fft = np.shape(single_fft)
@@ -261,7 +261,7 @@ def zcr(data):
 
     return data_zcr
 
-def heatmap(data, chans: list[str], title: str = ""):
+def heatmap(data, chans: list[str], title: str = "", save_name=None):
     """
         Heatmap visualization with mean across channels
 
@@ -273,6 +273,8 @@ def heatmap(data, chans: list[str], title: str = ""):
                 List of strings with channels to be plotted
             title: str
                 Optional. title of the figure
+            save_name: str
+                Optional, name of figure to be saved
 
         Returns
         -------
@@ -297,9 +299,23 @@ def heatmap(data, chans: list[str], title: str = ""):
     cmap1 = sns.diverging_palette(230, 20, as_cmap=True)
 
     # Draw the heatmap
-    sns.heatmap(plot_df, cmap=cmap1, vmax=100, center=0, square=True, linewidths=.5, cbar_kws={"shrink": .5}, ax=ax)
+    sns.heatmap(
+        plot_df,
+        cmap = cmap1,
+        vmax = 100,
+        vmin = -100,
+        center = 0,
+        square = True,
+        linewidths = .5,
+        cbar_kws = {"shrink": .5},
+        ax = ax
+        )
     ax.set_title(title)
     plt.tight_layout()
+
+    if (save_name):
+        plt.savefig(save_name)
+
     plt.show()
 
     return f, ax
