@@ -1,5 +1,6 @@
 ## Import libraries
 # - Default libraries
+import tqdm
 import copy
 import numpy as np
 import scipy.optimize as optimize
@@ -27,13 +28,13 @@ def maximize_eqi(x, *args):
         fd_threshold = fd_threshold,
         ssa_threshold = ssa_threshold,
         var_tol = var_tol
-    )
+        )
 
     # Apply artifact removal
     test_data = art.remove_artifacts(
         eeg_data = artifact_data,
         srate = srate
-    )
+        )
 
     eqi_scoring = eqi.scoring(
         clean_eeg = clean_data,
@@ -42,7 +43,7 @@ def maximize_eqi(x, *args):
         srate_test = srate,
         window = int(srate // 10),
         slide = int(srate // 20)
-    )
+        )
 
     # rpprint({
     #     "n_clusters": n_clusters,
@@ -76,3 +77,174 @@ def optimize_to_eqi(x0, bounds, args):
         callback = lambda:print("Running")
     )
     
+def simulated_annealing_optimizer(
+    func,
+    bounds,
+    args,
+    callback = lambda intermediate_result: None,
+    display = True,
+    max_iter = 100,
+    max_stag_count = 20,
+    x_err_tol = 0.1,
+    MR = 0.5
+    ):
+
+    # Configurables
+    max_stag_count = max_stag_count # maximum number of iterations where x_err hasn't changed
+    max_iter = max_iter # maximum number of iterations
+    x_err_tol = x_err_tol # tolerance for x_err (stop searching for a better solution when x_err < x_err_tol)
+    MR = MR # mutation rate
+
+    # Simulated annealing params
+    T = 1
+    alpha = 0.99
+    beta = 1
+    update_iters = 1
+
+    def generate_candidate(bounds=bounds, args = args):
+        x = [(np.random.uniform(bounds[d][0], bounds[d][1])) for d in range(len(bounds))]
+        return x, func(x, *args)
+
+    def generate_neighboring_candidate(x, MR=MR, bounds=bounds, args = args):
+        x_new = copy.deepcopy(x)
+        for i in range(len(x)):
+            if np.random.uniform(0, 1) < MR:
+                x_new[i] = np.random.uniform(bounds[i][0], bounds[i][1])
+        return x_new, func(x_new, *args)
+
+    x, x_err = generate_candidate(bounds, args) # generate a random x (particle/candidate) and its error (cost/objective/fitness function value)
+    x_best = x.copy() # best solution found so far
+    x_best_err = x_err # best error for that solution
+
+    prev_x_err = x_err # previous iteration's x_err
+    stag_count = 0 # number of iterations where x_err hasn't changed
+    max_stag_count = max_stag_count # generate a new starting candidate if x_err hasn't changed for max_stag_count iterations
+
+    # Stopping conditions
+    max_iter = max_iter # maximum number of iterations
+    x_err_tol = x_err_tol # stop searching for a better solution when x_err < x_err_tol
+
+    pbar = tqdm() if display else None # progress bar
+    n_iter = 1
+    try:
+        while (abs(x_best_err) > x_err_tol) and (n_iter < max_iter):
+            
+            if display:
+                pbar.set_description(f'x_best_err: {x_best_err:.4f}')
+                pbar.update(1)
+
+            prev_x_err = x_err
+            stag_count = stag_count + 1 if prev_x_err == x_err else 0
+
+            x_new, x_new_err = generate_neighboring_candidate(
+                x = x,
+                MR = MR,
+                bounds = bounds,
+                args = args
+                )
+
+            if x_new_err <= x_err:
+                x, x_err = x_new, x_new_err
+                if x_err <= x_best_err:
+                    x_best, x_best_err = x, x_err
+            else:
+                if np.random.uniform(0, 1) < np.exp(-beta * (x_new_err - x_err)/T):
+                    x, x_err = x_new, x_new_err
+                    
+            if n_iter % update_iters == 0:
+                T = alpha*T
+                T = T if T > 0.01 else 0.01
+
+            n_iter += 1
+
+            callback((x_best, x_best_err))
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        pbar.close() if display else None
+
+    print(f"x_best_err: {x_best_err:.4f} after {n_iter} iterations")
+
+    return x_best, x_best_err
+
+def heuristic_optimizer(
+        func,
+        bounds,
+        args,
+        callback = lambda intermediate_result: None,
+        display = True,
+        max_iter = 100,
+        max_stag_count = 20,
+        x_err_tol = 0.1,
+        MR = 0.5
+        ):
+    
+
+    # Configurables
+    max_stag_count = max_stag_count # maximum number of iterations where x_err hasn't changed
+    max_iter = max_iter # maximum number of iterations
+    x_err_tol = x_err_tol # tolerance for x_err (stop searching for a better solution when x_err < x_err_tol)
+    MR = MR # mutation rate
+
+    def generate_candidate(bounds=bounds, args = args):
+        x = [(np.random.uniform(bounds[d][0], bounds[d][1])) for d in range(len(bounds))]
+        return x, func(x, *args)
+
+    def generate_neighboring_candidate(x, MR=MR, bounds=bounds, args = args):
+        x_new = copy.deepcopy(x)
+        for i in range(len(x)):
+            if np.random.uniform(0, 1) < MR:
+                x_new[i] = np.random.uniform(bounds[i][0], bounds[i][1])
+        return x_new, func(x_new, *args)
+
+    x, x_err = generate_candidate(bounds, args) # generate a random x (particle/candidate) and its error (cost/objective/fitness function value)
+    x_best = x.copy() # best solution found so far
+    x_best_err = x_err # best error for that solution
+
+    prev_x_err = x_err # previous iteration's x_err
+    stag_count = 0 # number of iterations where x_err hasn't changed
+    max_stag_count = max_stag_count # generate a new starting candidate if x_err hasn't changed for max_stag_count iterations
+
+    # Stopping conditions
+    max_iter = max_iter # maximum number of iterations
+    x_err_tol = x_err_tol # stop searching for a better solution when x_err < x_err_tol
+
+    pbar = tqdm() if display else None # progress bar
+    n_iter = 1
+    try:
+        while abs(x_best_err) > x_err_tol and n_iter < max_iter:
+            
+            if display:
+                pbar.set_description(f'x_best_err: {x_best_err:.4f}')
+                pbar.update(1)
+
+            prev_x_err = x_err
+            stag_count = stag_count + 1 if prev_x_err == x_err else 0
+            
+            # Generate a random neighbor of x and calculate its error
+            if stag_count > max_stag_count:
+                x_new, x_new_err = generate_candidate(bounds, args)
+                stag_count = 0
+            else:
+                x_new, x_new_err = copy.deepcopy(x), x_err
+                x_new, x_new_err = generate_neighboring_candidate(x = x_new, MR = MR, bounds=bounds, args=args)
+
+            # Update x and x_err if the new solution is better
+            if x_new_err < x_err:
+                x, x_err = x_new, x_new_err # if x_new is better, update x and x_err
+                if x_err < x_best_err:
+                    x_best, x_best_err = x, x_err # if x_new is the best, update x_best and x_best_err
+
+            n_iter += 1
+
+            callback((x_best, x_best_err))
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        pbar.close() if display else None
+
+    print(f"x_best_err: {x_best_err:.4f} after {n_iter} iterations")
+
+    return x_best, x_best_err
